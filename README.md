@@ -2,9 +2,11 @@
 
 Bu depo iki parçadan oluşur: `php-backend/` (plain PHP API) ve `react-frontend/` (Vite + React frontend).
 
+Backend, Swagger ile dokümante edilmiştir.
+
 # Docker Compose ile Çalıştırma
 
-Sadece `sudo docker compose up --build` komutu ile uygulamayı çalıştırabilsin.
+Sadece `sudo docker compose up --build` komutu ile uygulamayı çalıştırabilsiniz.
 
 Erişim (varsayılan):
 
@@ -20,16 +22,16 @@ Admin hesabı giriş bilgileri
 Test veritabanı ve sıfırlama
 
 - Depoda geliştirme/test amaçlı bazı örnek tablolar ve kayıtlar bulunmaktadır.
-- Eğer veritabanını sıfırdan başlatmak isterseniz `php-backend/db/` dizinindeki `database.sqlite` dosyasını silip tüm containerları durdurup ilişkilendirilmiş named volume'ları da silmen yeterlidir. Docker Compose ile sıfırlamak için örnek adımlar:
+- Eğer veritabanını sıfırdan başlatmak isterseniz `php-backend/db/` dizinindeki `database.sqlite` dosyasını silip tüm containerları durdurup ilişkilendirilmiş named volume'ları da silmeniz yeterlidir. Docker Compose ile sıfırlamak için örnek adımlar:
 
 ```powershell
-# konteynerleri durdur
+# konteynerleri durdurun
 sudo docker compose down
 
-#İlişkilendirilmiş named volume'ları da sil
+#İlişkilendirilmiş named volume'ları da silin
 docker volume rm bilet-satin-alma_db-data
 
-# host makinedeki sqlite dosyasını sil
+# host makinedeki sqlite dosyasını silin
 sudo rm -f ./php-backend/database.sqlite
 
 # yeniden build & up
