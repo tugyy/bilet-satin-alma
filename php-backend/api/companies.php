@@ -256,13 +256,17 @@ try {
             exit;
         }
 
-        // Check unique name
-        $chk = $db->prepare("SELECT id FROM Bus_Company WHERE name = ?");
-        $chk->execute([$data['name']]);
-        if ($chk->fetch()) {
-            http_response_code(409);
-            echo json_encode(['success' => false, 'error' => 'Bu firma adi zaten var']);
-            exit;
+        // Check unique name only if name is provided in the payload
+        if (isset($data['name'])) {
+            $chk = $db->prepare("SELECT id FROM Bus_Company WHERE name = ?");
+            $chk->execute([$data['name']]);
+            $existing = $chk->fetch(PDO::FETCH_ASSOC);
+            // If an existing company has the same name and it's not the company we're updating, it's a conflict
+            if ($existing && (string)$existing['id'] !== (string)$companyId) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'error' => 'Bu firma adi zaten var']);
+                exit;
+            }
         }
 
         $params[] = $companyId;

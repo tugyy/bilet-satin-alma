@@ -167,7 +167,7 @@ function App() {
               <div className="max-w-5xl mx-auto flex items-center justify-between">
                 <a href="/" className="flex items-center gap-2 text-xl font-bold text-black">
                   {/* Simple text logo; replace with SVG or image if desired */}
-                  <span>Yavuzlar</span>
+                  <span>Yavuzlar Bilet</span>
                 </a>
                 <NavLinks />
               </div>

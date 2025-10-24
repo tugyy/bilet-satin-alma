@@ -20,14 +20,17 @@ Admin hesabı giriş bilgileri
 Test veritabanı ve sıfırlama
 
 - Depoda geliştirme/test amaçlı bazı örnek tablolar ve kayıtlar bulunmaktadır.
-- Eğer veritabanını sıfırdan başlatmak isterseniz `php-backend/db/` dizinindeki `database.sqlite` dosyasını silip konteyneri yeniden başlatmanız yeterlidir. Docker Compose ile sıfırlamak için örnek adımlar:
+- Eğer veritabanını sıfırdan başlatmak isterseniz `php-backend/db/` dizinindeki `database.sqlite` dosyasını silip tüm containerları durdurup ilişkilendirilmiş named volume'ları da silmen yeterlidir. Docker Compose ile sıfırlamak için örnek adımlar:
 
 ```powershell
 # konteynerleri durdur
 docker compose down
 
-# host makinedeki sqlite dosyasını sil (php-backend dizininde olabilir)
-Remove-Item -Path .\php-backend\database.sqlite -Force
+#İlişkilendirilmiş named volume'ları da sil
+docker volume rm bilet-satin-alma_db-data
+
+# host makinedeki sqlite dosyasını sil
+sudo rm -f ./php-backend/database.sqlite
 
 # yeniden build & up
 docker compose up --build
