@@ -21,11 +21,8 @@ export type TripsResponse = {
   offset?: number;
 };
 
-// Use Vite environment variable VITE_API_BASE if provided.
-// Default to a relative `/api` so the frontend can be served from the same origin
-// and requests will be proxied to the backend (recommended for docker-compose).
 const _env = (import.meta as unknown as { env?: Record<string, unknown> }).env;
-const rawBase = _env?.VITE_API_BASE ?? '/api';
+const rawBase = _env?.VITE_API_BASE ?? (_env?.DEV ? 'http://localhost:8000/api' : '/api');
 const API_BASE = rawBase ? String(rawBase).replace(/\/$/, '') : '/api';
 
 export async function fetchTrips(query: Record<string, string | number | undefined> = {}) {
