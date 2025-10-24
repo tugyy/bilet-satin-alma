@@ -4,7 +4,7 @@ Bu depo iki parçadan oluşur: `php-backend/` (plain PHP API) ve `react-frontend
 
 # Docker Compose ile Çalıştırma
 
-Sadece `docker compose up --build` komutu ile uygulamayı çalıştırabilsin.
+Sadece `sudo docker compose up --build` komutu ile uygulamayı çalıştırabilsin.
 
 Erişim (varsayılan):
 
@@ -24,7 +24,7 @@ Test veritabanı ve sıfırlama
 
 ```powershell
 # konteynerleri durdur
-docker compose down
+sudo docker compose down
 
 #İlişkilendirilmiş named volume'ları da sil
 docker volume rm bilet-satin-alma_db-data
@@ -33,5 +33,5 @@ docker volume rm bilet-satin-alma_db-data
 sudo rm -f ./php-backend/database.sqlite
 
 # yeniden build & up
-docker compose up --build
+sudo docker compose up --build
 ```
