@@ -1,0 +1,1121 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Yavuzlar Bilet Uygulaması PHP Backend API",
+    "version": "1.0.0",
+    "description": "Bu OpenAPI spesifikasyonu, PHP tabanlı bilet alma uygulamasının backend API'sini tanımlar. API, kullanıcı yönetimi, sefer yönetimi, bilet satın alma ve kupon işlemleri gibi işlevleri kapsar. JWT tabanlı kimlik doğrulama kullanılır ve farklı kullanıcı rolleri (admin, company, user) için yetkilendirme kuralları uygulanır."
+  },
+  "servers": [{ "url": "/" }],
+  "paths": {
+    "/api/register.php": {
+      "post": {
+        "tags": ["Register"],
+        "summary": "Yeni kullanıcı kaydı",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Kullanıcı oluşturuldu ve token döndürüldü",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RegisterResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": { "schema": { "type": "object" } }
+            }
+          },
+          "409": {
+            "description": "Email zaten kullanımda",
+            "content": {
+              "application/json": { "schema": { "type": "object" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth.php": {
+      "post": {
+        "summary": "Kullanıcı girişi yap",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "format": "password" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Giriş başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Kendi profilini getir",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Kullanıcı profili",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Kendi profilini güncelle",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Güncellenmiş kullanıcı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Kullanıcı çıkışı yap",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Çıkış başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users.php": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Tüm kullanıcıları getir",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Sadece admin yetkisi olan kullanıcılar erişebilir.",
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetkisiz - admin yetkisi gerekli",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Yeni kullanıcı oluştur",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Sadece admin yetkisi olan kullanıcılar yeni kullanıcı oluşturabilir. Ve sadece 'company' rolünde kullanıcı oluşturulur.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Kullanıcı oluşturuldu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "id": { "type": "string", "format": "uuid" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetkisiz - admin yetkisi gerekli",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "error": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/trips.php": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Seferleri listele / ara",
+        "parameters": [
+          {
+            "name": "departure_city",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "destination_city",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "company_id",
+            "in": "query",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "min_price",
+            "in": "query",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "max_price",
+            "in": "query",
+            "schema": { "type": "integer" }
+          },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["price", "departure_time"] }
+          },
+          {
+            "name": "sort_dir",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["asc", "desc"] }
+          }
+          ,
+          { "name": "mine", "in": "query", "schema": { "type": "boolean" }, "description": "Eğer true ise ve kullanıcı company rolündeyse sadece kendi firmasına ait seferler döner" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Trip" }
+                    },
+                    "count": { "type": "integer" },
+                    "total": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "offset": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      ,
+      "post": {
+        "tags": ["Trips"],
+        "summary": "Yeni sefer oluştur (firma yöneticileri)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateTripRequest" } }
+          }
+        },
+        "responses": {
+          "201": { "description": "Sefer oluşturuldu", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "message": { "type": "string" }, "id": { "type": "string" } } } } } },
+          "400": { "description": "Geçersiz istek" },
+          "401": { "description": "Yetkilendirme gerekli" },
+          "403": { "description": "Yetkisiz - yalnızca firma yöneticileri kendi firmalarına sefer ekleyebilir" }
+        }
+      }
+    },
+    "/api/trips.php/{id}": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Sefer detayını getir",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/Trip" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      ,
+      
+      "patch": {
+        "tags": ["Trips"],
+        "summary": "Sefer güncelle (firma yöneticileri)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateTripRequest" } } } },
+        "responses": { "200": { "description": "Sefer güncellendi" }, "400": { "description": "Geçersiz istek" }, "403": { "description": "Yetkisiz" }, "404": { "description": "Sefer bulunamadı" } }
+      },
+      "delete": {
+        "tags": ["Trips"],
+        "summary": "Sefer sil (firma yöneticileri)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Sefer silindi" }, "403": { "description": "Yetkisiz" }, "404": { "description": "Sefer bulunamadı" } }
+      }
+    }
+    ,
+    "/api/trips.php/{id}/tickets": {
+      "get": {
+        "tags": ["Trips"],
+        "summary": "Bir sefere ait biletleri listele (firma yöneticileri)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Sefere ait biletler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Ticket" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Yetkisiz - yalnızca ilgili firma yöneticileri görebilir" },
+          "404": { "description": "Sefer bulunamadı" }
+          }
+        }
+      }
+    ,
+    "/api/tickets.php": {
+      "get": {
+        "tags": ["Tickets"],
+        "summary": "Kullanıcıya ait biletleri getir (authenticated)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Kullanıcının biletleri",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Ticket" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Yetkilendirme gerekli" }
+        }
+      }
+    },
+    "/api/tickets.php/{id}": {
+      "delete": {
+        "tags": ["Tickets"],
+        "summary": "Bir bileti iptal et (kullanıcı veya firma yetkilisi)",
+        "description": "Bilet sahibi kullanıcı veya seferi düzenleyen firma yöneticisi, sefer kalkış saatinden en az 1 saat önce bileti iptal edebilir. İptal edilen biletin ödemesi kullanıcıya iade edilir. Yetkisiz veya zaman aşımı durumlarında uygun hata kodu döner.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "İptal başarılı; ücret iade edildi",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "message": { "type": "string" } } } } }
+          },
+          "400": { "description": "Geçersiz istek (id eksik veya hatalı)" },
+          "401": { "description": "Yetkilendirme gerekli" },
+          "403": { "description": "Yetkisiz veya sefer kalkışına 1 saatten az süre kaldı" },
+          "404": { "description": "Bilet bulunamadı" },
+          "500": { "description": "Sunucu hatası" }
+        }
+      }
+  },
+  "/api/tickets.php/{id}/pdf": {
+    "get": {
+      "tags": ["Tickets"],
+      "summary": "Bileti PDF olarak indir",
+        "description": "Belirtilen biletin PDF çıktısını döner (attachment). Dikkat: sadece bilet sahibi (ticket owner) bu dosyayı indirebilir.",
+      "security": [{ "bearerAuth": [] }],
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+      ],
+      "responses": {
+        "200": {
+          "description": "PDF dosyası",
+          "content": {
+            "application/pdf": {
+              "schema": { "type": "string", "format": "binary" }
+            }
+          }
+        },
+        "401": { "description": "Yetkilendirme gerekli" },
+        "403": { "description": "Bu bileti indirme yetkiniz yok (sadece bilet sahibi indirebilir)" },
+        "404": { "description": "Bilet bulunamadi" }
+      }
+    }
+  },
+    "/api/check_coupon.php": {
+      "post": {
+        "tags": ["Coupons"],
+        "summary": "Kupon kodunu kontrol et (sadece user rolü)",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Sadece role = 'user' olan authenticated kullanıcılar kupon kontrolü yapabilir. İstek body: code (zorunlu), trip_id (opsiyonel).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CheckCouponRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kupon bilgisi",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CheckCouponResponse" }
+              }
+            }
+          },
+          "400": { "description": "Geçersiz istek (ör. code eksik veya trip mismatch)" },
+          "401": { "description": "Yetkilendirme gerekli" },
+          "403": { "description": "Yetkisiz - sadece user rolündeki kullanıcılar kupon kontrolü yapabilir" },
+          "404": { "description": "Kupon bulunamadi veya sefer bulunamadi" },
+          "409": { "description": "Kupon zaten kullanilmis" },
+          "410": { "description": "Kupon kullanima kapali veya süresi dolmus" }
+        }
+      }
+    },
+    "/api/coupons.php": {
+      "get": {
+        "tags": ["Coupons"],
+        "summary": "Firma yöneticisi kendi firmasına ait kuponları listele (company role)",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Yalnızca role='company' olan kullanıcılar kendi firmalarına ait kuponları listeleyebilir. Admin bu endpointi kullanamaz.",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kupon listesi",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "coupons": { "type": "array", "items": { "$ref": "#/components/schemas/Coupon" } }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Yetkisiz - sadece company rolündeki kullanıcılar" }
+        }
+      },
+      "post": {
+        "tags": ["Coupons"],
+        "summary": "Yeni kupon oluştur (firma yöneticileri)",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Sadece company rolündeki kullanıcılar kendi firmaları için kupon oluşturabilir. company_id JWT'den alınır; client company_id göndermez.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCouponRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Kupon oluşturuldu", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "coupon": { "$ref": "#/components/schemas/Coupon" } } } } } },
+          "400": { "description": "Geçersiz istek" },
+          "403": { "description": "Yetkisiz - sadece firma yöneticileri" }
+        }
+      }
+    },
+    "/api/coupons.php/{id}": {
+      "get": {
+        "tags": ["Coupons"],
+        "summary": "Kupon detayını getir (firma yöneticisi kendi firması için)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Başarılı", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "coupon": { "$ref": "#/components/schemas/Coupon" } } } } } },
+          "403": { "description": "Yetkisiz - yalnızca company rolündeki kullanıcılar kendi firmalarındaki kuponları görebilir" },
+          "404": { "description": "Kupon bulunamadı" }
+        }
+      },
+      "patch": {
+        "tags": ["Coupons"],
+        "summary": "Kuponu güncelle (firma yöneticisi kendi firması için)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateCouponRequest" } } } },
+        "responses": {
+          "200": { "description": "Güncellendi" },
+          "400": { "description": "Geçersiz istek" },
+          "403": { "description": "Yetkisiz - yalnızca company rolündeki kullanıcılar kendi firmalarındaki kuponları güncelleyebilir" },
+          "404": { "description": "Kupon bulunamadı" }
+        }
+      },
+      "delete": {
+        "tags": ["Coupons"],
+        "summary": "Kuponu sil (firma yöneticisi kendi firması için)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Silindi" }, "403": { "description": "Yetkisiz - yalnızca company rolündeki kullanıcılar kendi firmalarındaki kuponları silebilir" }, "404": { "description": "Kupon bulunamadı" } }
+      }
+    },
+    "/api/admin_coupons.php": {
+      "get": {
+        "tags": ["AdminCoupons"],
+        "summary": "Admin'in oluşturduğu global kuponları listele",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Sadece role='admin' olan kullanıcılar kendi oluşturdukları global (company_id = null) kuponları listeleyebilir.",
+        "responses": {
+          "200": {
+            "description": "Admin'e ait kuponlar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "coupons": { "type": "array", "items": { "$ref": "#/components/schemas/Coupon" } }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Yetkisiz - sadece admin rolündeki kullanıcılar" }
+        }
+      },
+      "post": {
+        "tags": ["AdminCoupons"],
+        "summary": "Global (company_id = null) kupon oluştur (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin sadece global kupon oluşturur. Oluşturulan kuponun sahibi admin olarak takip edilir.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminCreateGlobalCouponRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Kupon oluşturuldu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "coupon": { "$ref": "#/components/schemas/Coupon" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Geçersiz istek" },
+          "403": { "description": "Yetkisiz - sadece admin rolündeki kullanıcılar" },
+          "409": { "description": "Ayni kodla baska bir kupon mevcut" }
+        }
+      }
+    },
+    "/api/admin_coupons.php/{id}": {
+      "get": {
+        "tags": ["AdminCoupons"],
+        "summary": "Admin tarafından oluşturulmuş tek bir kuponu getir",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Başarılı", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "coupon": { "$ref": "#/components/schemas/Coupon" } } } } } },
+          "403": { "description": "Yetkisiz - sadece admin rolündeki kullanıcılar" },
+          "404": { "description": "Kupon bulunamadı veya yetkiniz yok" }
+        }
+      },
+      "patch": {
+        "tags": ["AdminCoupons"],
+        "summary": "Admin tarafından oluşturulmuş kuponu güncelle",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateCouponRequest" } } } },
+        "responses": {
+          "200": { "description": "Güncellendi" },
+          "400": { "description": "Geçersiz istek" },
+          "403": { "description": "Yetkisiz - sadece admin rolündeki kullanıcılar" },
+          "404": { "description": "Kupon bulunamadı veya yetkiniz yok" },
+          "409": { "description": "Ayni kodla baska bir kupon mevcut" }
+        }
+      },
+      "delete": {
+        "tags": ["AdminCoupons"],
+        "summary": "Admin tarafından oluşturulmuş kuponu sil",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Silindi" }, "403": { "description": "Yetkisiz" }, "404": { "description": "Kupon bulunamadı veya yetkiniz yok" } }
+      }
+    },
+    "/api/purchase.php": {
+      "post": {
+        "tags": ["Purchase"],
+        "summary": "Bilet satin al (sadece role=user)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PurchaseRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bilet oluşturuldu",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PurchaseResponse" }
+              }
+            }
+          },
+          "400": { "description": "Geçersiz istek" },
+          "402": { "description": "Yetersiz bakiye" },
+          "403": { "description": "Yetkisiz - sadece user rolü satın alabilir" },
+          "409": { "description": "Koltuk zaten rezerve edilmiş veya kupon kullanılmış" }
+        }
+      }
+    }
+    ,
+    "/api/companies.php": {
+      "get": {
+        "tags": ["Companies"],
+        "summary": "Tüm firmaları listeler (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Company" }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Companies"],
+        "summary": "Yeni firma oluştur (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCompanyRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Firma oluşturuldu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "id": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies.php/{id}": {
+      "get": {
+        "tags": ["Companies"],
+        "summary": "Firma detayını getir (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/CompanyDetail" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Companies"],
+        "summary": "Firma güncelle (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateCompanyRequest" } } } },
+        "responses": { "200": { "description": "Güncellendi" } }
+      },
+      "delete": {
+        "tags": ["Companies"],
+        "summary": "Firma sil (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Silindi" } }
+      }
+    },
+    "/api/companies.php/{id}/assign_manager": {
+      "post": {
+        "tags": ["Companies"],
+        "summary": "Firma yöneticisi ata (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["user_id"], "properties": { "user_id": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Yonetici atandi" } }
+      }
+    },
+    "/api/companies.php/{id}/remove_manager": {
+      "post": {
+        "tags": ["Companies"],
+        "summary": "Firma yöneticisi çıkar (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["user_id"], "properties": { "user_id": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Yonetici kaldirildi" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["full_name", "email", "password"],
+        "properties": {
+          "full_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "format": "password" }
+        }
+      },
+      "RegisterResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "full_name": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string", "enum": ["user", "company", "admin"] },
+          "company_id": { "type": "string" }
+        }
+      },
+      "Trip": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "company_id": { "type": "string" },
+            "company_name": { "type": "string" },
+            "company_logo": { "type": ["string", "null"], "description": "Logo path or URL" },
+            "destination_city": { "type": "string" },
+          "departure_city": { "type": "string" },
+          "departure_time": { "type": "string", "format": "date-time" },
+          "arrival_time": { "type": "string", "format": "date-time" },
+          "price": { "type": "integer" },
+          "capacity": { "type": "integer" },
+          "booked_seats": { "type": "integer" },
+          "available_seats": { "type": "integer" },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat_number": { "type": "integer" },
+                    "status": { "type": "string", "enum": ["booked", "available"] },
+                    "ticket_id": { "type": "string" },
+                    "user_id": { "type": "string" },
+                    "disabled": { "type": "boolean", "description": "UI should disable the seat if true" }
+              }
+            }
+          }
+        }
+      },
+      "CreateTripRequest": {
+        "type": "object",
+        "required": ["destination_city", "arrival_time", "departure_time", "departure_city", "price", "capacity"],
+        "properties": {
+          "destination_city": { "type": "string" },
+          "departure_city": { "type": "string" },
+          "departure_time": { "type": "string", "format": "date-time" },
+          "arrival_time": { "type": "string", "format": "date-time" },
+          "price": { "type": "integer", "minimum": 1 },
+          "capacity": { "type": "integer", "minimum": 1 }
+        },
+        "description": "Yeni sefer oluşturma isteği. Server, istek sahibinin JWT'sinden kullanıcının bağlı olduğu company_id'yi kullanır; client company_id göndermemelidir."
+      },
+      "UpdateTripRequest": {
+        "type": "object",
+        "properties": {
+          "destination_city": { "type": "string" },
+          "departure_city": { "type": "string" },
+          "departure_time": { "type": "string", "format": "date-time" },
+          "arrival_time": { "type": "string", "format": "date-time" },
+          "price": { "type": "integer", "minimum": 1 },
+          "capacity": { "type": "integer", "minimum": 1 }
+        },
+        "description": "Sefer güncelleme isteği. Yalnızca belirtilen alanlar güncellenir. Kapasite azaltılması desteklenmez; kapasiteyi artırabilirsiniz ancak azaltmaya çalışmak 409 Conflict ile sonuçlanacaktır."
+      },
+      "Ticket": {
+        "type": "object",
+        "properties": {
+          "ticket_id": { "type": "string" },
+          "user_id": { "type": "string" },
+          "full_name": { "type": "string" },
+          "email": { "type": "string" },
+          "total_price": { "type": "integer" },
+          "coupon_id": { "type": "string", "nullable": true, "description": "Applied coupon id (if any)" },
+          "coupon_code": { "type": ["string", "null"], "description": "Applied coupon code (if any)" },
+          "status": { "type": "string", "enum": ["active", "canceled", "expired"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "seat_number": { "type": "integer" }
+              }
+            }
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": ["full_name", "email"],
+        "properties": {
+          "full_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "company_id": { "type": "string" }
+        },
+        "description": "Not: 'role' ve 'balance' bu endpoint üzerinden gönderilmez. Oluşturulan kullanıcılar server tarafından role='company' olarak atanır ve bakiye varsayılan 800 olacaktır."
+      },
+      "AdminUpdateUserRequest": {
+        "type": "object",
+        "description": "Admin tarafından kullanıcı güncelleme (parola, role ve bakiye değişikliği içermez).",
+        "properties": {
+          "full_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "company_id": { "type": "string" }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "description": "Kullanıcının kendi profili için güncellenebilir alanlar: full_name, email ve password (profil güncelleme endpoint'i için).",
+        "properties": {
+          "full_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "format": "password" }
+        }
+      }
+      ,
+      "Company": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "logo_path": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "manager_count": { "type": "integer" }
+        }
+      },
+      "CompanyDetail": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "logo_path": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "managers": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          }
+        }
+      },
+      "CreateCompanyRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "logo_path": { "type": "string" }
+        }
+      },
+      "UpdateCompanyRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "logo_path": { "type": ["string", "null"] }
+        }
+      }
+      ,
+      "CheckCouponRequest": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": { "type": "string" },
+          "trip_id": { "type": "string", "description": "Isteğe bağlı: kuponun belirli bir firma için geçerli olup olmadığını kontrol etmek için sefer id verilebilir" }
+        }
+      },
+      "CheckCouponResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "coupon": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "code": { "type": "string" },
+              "discount": { "type": "number", "description": "Percentage discount (0-50)", "minimum": 0, "maximum": 50 },
+              "company_id": { "type": ["string", "null"] },
+              "usage_limit": { "type": "integer" },
+              "expire_date": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "Coupon": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "code": { "type": "string" },
+          "discount": { "type": "number", "description": "Percentage discount (0-50)", "minimum": 0, "maximum": 50 },
+          "company_id": { "type": ["string", "null"] },
+          "usage_limit": { "type": "integer" },
+          "used_count": { "type": "integer" },
+          "expire_date": { "type": "string", "format": "date-time" },
+          "active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateCouponRequest": {
+        "type": "object",
+        "required": ["code", "discount"],
+        "properties": {
+          "code": { "type": "string" },
+          "discount": { "type": "number", "description": "Percentage discount (0-50)", "minimum": 0, "maximum": 50 },
+          "usage_limit": { "type": "integer" },
+          "expire_date": { "type": "string", "format": "date-time" },
+          "company_id": { "type": ["string", "null"] }
+        },
+        "description": "Company rolündeki kullanıcı company_id göndermemelidir; server JWT'den şirket bilgisini alır. Admin company_id belirtebilir."
+      },
+      "AdminCreateGlobalCouponRequest": {
+        "type": "object",
+        "required": ["code", "discount", "usage_limit", "expire_date"],
+        "properties": {
+          "code": { "type": "string" },
+          "discount": { "type": "number", "description": "Percentage discount (0-50)", "minimum": 0, "maximum": 50 },
+          "usage_limit": { "type": "integer" },
+          "expire_date": { "type": "string", "format": "date-time" }
+        },
+        "description": "Admin tarafından global (company_id = null) kupon oluşturma isteği. Admin sahipliği sunucu tarafından takip edilir."
+      },
+      "UpdateCouponRequest": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "discount": { "type": "number" },
+          "usage_limit": { "type": "integer" },
+          "expire_date": { "type": "string", "format": "date-time" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "PurchaseRequest": {
+        "type": "object",
+        "required": ["trip_id", "seats"],
+        "properties": {
+          "trip_id": { "type": "string" },
+          "seats": { "type": "array", "items": { "type": "integer" }, "description": "Koltuk numaraları (1..capacity)" },
+          "coupon_code": { "type": "string", "nullable": true }
+        }
+      },
+      "PurchaseResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" },
+          "ticket": {
+            "type": "object",
+            "properties": {
+              "ticket_id": { "type": "string" },
+              "user_id": { "type": "string" },
+              "total_price": { "type": "integer" },
+              "seats": { "type": "array", "items": { "type": "object", "properties": { "seat_number": { "type": "integer" } } } },
+              "coupon_id": { "type": "string", "nullable": true },
+              "coupon_code": { "type": ["string", "null"] },
+              "status": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

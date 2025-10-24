@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  php-backend:
+    build:
+      context: ./php-backend
+      dockerfile: Dockerfile
+    image: bilet-app-php-backend:latest
+    volumes:
+      - ./php-backend:/var/www/html:ro
+    ports:
+      - "8000:80"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./react-frontend
+      dockerfile: Dockerfile
+    image: bilet-app-frontend:latest
+    ports:
+      - "5173:80"
+    depends_on:
+      - php-backend
+    restart: unless-stopped
