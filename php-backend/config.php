@@ -100,7 +100,7 @@ CREATE TABLE Tickets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (trip_id) REFERENCES Trips(id),
     FOREIGN KEY (user_id) REFERENCES User(id)
-    -- Note: SQLite does not support adding a FK easily in migrations: coupon_id is stored for lookup
+    -- Note: SQLite does not support adding a FK easily in migrations; coupon_id is stored for lookup
 );
 
 -- Booked_Seats tablosu
@@ -151,8 +151,12 @@ SQL;
             try {
                 $db->beginTransaction();
 
-                // Execute full schema in one exec. Splitting by ';' can break when comments contain ';'.
-                $db->exec($schema);
+                // Split statements and execute individually to provide clearer errors
+                $statements = array_filter(array_map('trim', explode(';', $schema)));
+                foreach ($statements as $statement) {
+                    if ($statement === '') continue;
+                    $db->exec($statement . ';');
+                }
 
                 // After creating schema, insert a default admin user if no users exist
                 // Default credentials: email: user@example.com, password: string, full_name: Admin
